@@ -22,6 +22,7 @@ import com.builttoroam.devicecalendar.models.*
 import com.builttoroam.devicecalendar.models.Calendar
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import io.flutter.Log
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
@@ -98,6 +99,7 @@ class CalendarDelegate(binding: ActivityPluginBinding?, context: Context) :
                 RETRIEVE_CALENDARS_REQUEST_CODE -> {
                     retrieveCalendars(cachedValues.pendingChannelResult)
                 }
+
                 RETRIEVE_EVENTS_REQUEST_CODE -> {
                     retrieveEvents(
                         cachedValues.calendarId,
@@ -107,9 +109,11 @@ class CalendarDelegate(binding: ActivityPluginBinding?, context: Context) :
                         cachedValues.pendingChannelResult
                     )
                 }
+
                 RETRIEVE_CALENDAR_REQUEST_CODE -> {
                     retrieveCalendar(cachedValues.calendarId, cachedValues.pendingChannelResult)
                 }
+
                 CREATE_OR_UPDATE_EVENT_REQUEST_CODE -> {
                     createOrUpdateEvent(
                         cachedValues.calendarId,
@@ -117,6 +121,7 @@ class CalendarDelegate(binding: ActivityPluginBinding?, context: Context) :
                         cachedValues.pendingChannelResult
                     )
                 }
+
                 DELETE_EVENT_REQUEST_CODE -> {
                     deleteEvent(
                         cachedValues.calendarId,
@@ -124,9 +129,11 @@ class CalendarDelegate(binding: ActivityPluginBinding?, context: Context) :
                         cachedValues.pendingChannelResult
                     )
                 }
+
                 REQUEST_PERMISSIONS_REQUEST_CODE -> {
                     finishWithSuccess(permissionGranted, cachedValues.pendingChannelResult)
                 }
+
                 DELETE_CALENDAR_REQUEST_CODE -> {
                     deleteCalendar(cachedValues.calendarId, cachedValues.pendingChannelResult)
                 }
@@ -156,33 +163,34 @@ class CalendarDelegate(binding: ActivityPluginBinding?, context: Context) :
 
     @SuppressLint("MissingPermission")
     fun retrieveCalendars(pendingChannelResult: MethodChannel.Result) {
-        if (arePermissionsGranted()) {
-            val contentResolver: ContentResolver? = _context?.contentResolver
-            val uri: Uri = CalendarContract.Calendars.CONTENT_URI
-            val cursor: Cursor? = if (atLeastAPI(17)) {
-                contentResolver?.query(uri, Cst.CALENDAR_PROJECTION, null, null, null)
-            } else {
-                contentResolver?.query(uri, Cst.CALENDAR_PROJECTION_OLDER_API, null, null, null)
-            }
-            val calendars: MutableList<Calendar> = mutableListOf()
-            try {
-                while (cursor?.moveToNext() == true) {
-                    val calendar = parseCalendarRow(cursor) ?: continue
-                    calendars.add(calendar)
-                }
-
-                finishWithSuccess(_gson?.toJson(calendars), pendingChannelResult)
-            } catch (e: Exception) {
-                finishWithError(EC.GENERIC_ERROR, e.message, pendingChannelResult)
-            } finally {
-                cursor?.close()
-            }
-        } else {
+        if (!arePermissionsGranted()) {
             val parameters = CalendarMethodsParametersCacheModel(
                 pendingChannelResult,
                 RETRIEVE_CALENDARS_REQUEST_CODE
             )
             requestPermissions(parameters)
+            return
+        }
+
+        val contentResolver: ContentResolver? = _context?.contentResolver
+        val uri: Uri = CalendarContract.Calendars.CONTENT_URI
+        val cursor: Cursor? = if (atLeastAPI(17)) {
+            contentResolver?.query(uri, Cst.CALENDAR_PROJECTION, null, null, null)
+        } else {
+            contentResolver?.query(uri, Cst.CALENDAR_PROJECTION_OLDER_API, null, null, null)
+        }
+        val calendars: MutableList<Calendar> = mutableListOf()
+        try {
+            while (cursor?.moveToNext() == true) {
+                val calendar = parseCalendarRow(cursor) ?: continue
+                calendars.add(calendar)
+            }
+
+            finishWithSuccess(_gson?.toJson(calendars), pendingChannelResult)
+        } catch (e: Exception) {
+            finishWithError(EC.GENERIC_ERROR, e.message, pendingChannelResult)
+        } finally {
+            cursor?.close()
         }
     }
 
@@ -311,20 +319,20 @@ class CalendarDelegate(binding: ActivityPluginBinding?, context: Context) :
     fun createCalendar(
         calendarName: String,
         calendarColor: String?,
-        localAccountName: String,
+        localAccountName: String?,
         pendingChannelResult: MethodChannel.Result
     ) {
         val contentResolver: ContentResolver? = _context?.contentResolver
-
-        var uri = CalendarContract.Calendars.CONTENT_URI
-        uri = uri.buildUpon()
+        val builder = CalendarContract.Calendars.CONTENT_URI.buildUpon()
             .appendQueryParameter(CALLER_IS_SYNCADAPTER, "true")
             .appendQueryParameter(CalendarContract.Calendars.ACCOUNT_NAME, localAccountName)
             .appendQueryParameter(
                 CalendarContract.Calendars.ACCOUNT_TYPE,
                 CalendarContract.ACCOUNT_TYPE_LOCAL
             )
-            .build()
+
+        val uri = builder.build()
+
         val values = ContentValues()
         values.put(CalendarContract.Calendars.NAME, calendarName)
         values.put(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, calendarName)
@@ -865,8 +873,10 @@ class CalendarDelegate(binding: ActivityPluginBinding?, context: Context) :
 
     private fun arePermissionsGranted(): Boolean {
         if (atLeastAPI(23) && _binding != null) {
-            val writeCalendarPermissionGranted = _binding!!.activity.checkSelfPermission(Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED
-            val readCalendarPermissionGranted = _binding!!.activity.checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
+            val writeCalendarPermissionGranted =
+                _binding!!.activity.checkSelfPermission(Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED
+            val readCalendarPermissionGranted =
+                _binding!!.activity.checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
             return writeCalendarPermissionGranted && readCalendarPermissionGranted
         }
 
@@ -899,7 +909,9 @@ class CalendarDelegate(binding: ActivityPluginBinding?, context: Context) :
         val accessLevel = cursor.getInt(Cst.CALENDAR_PROJECTION_ACCESS_LEVEL_INDEX)
         val calendarColor = cursor.getInt(Cst.CALENDAR_PROJECTION_COLOR_INDEX)
         val accountName = cursor.getString(Cst.CALENDAR_PROJECTION_ACCOUNT_NAME_INDEX)
-        val accountType = cursor.getString(Cst.CALENDAR_PROJECTION_ACCOUNT_TYPE_INDEX)
+
+        // This _can_ actually be `null` and it will break stuff if it is, so need to be safe
+        val accountType = cursor.getString(Cst.CALENDAR_PROJECTION_ACCOUNT_TYPE_INDEX) ?: ""
         val ownerAccount = cursor.getString(Cst.CALENDAR_PROJECTION_OWNER_ACCOUNT_INDEX)
 
         val calendar = Calendar(
@@ -1068,6 +1080,7 @@ class CalendarDelegate(binding: ActivityPluginBinding?, context: Context) :
             Events.CAL_ACCESS_OWNER,
             Events.CAL_ACCESS_EDITOR
             -> false
+
             else -> true
         }
     }
@@ -1256,7 +1269,7 @@ class CalendarDelegate(binding: ActivityPluginBinding?, context: Context) :
         else -> null
     }
 
-    private fun parseEventStatus(status: Int): EventStatus? = when(status) {
+    private fun parseEventStatus(status: Int): EventStatus? = when (status) {
         Events.STATUS_CONFIRMED -> EventStatus.CONFIRMED
         Events.STATUS_CANCELED -> EventStatus.CANCELED
         Events.STATUS_TENTATIVE -> EventStatus.TENTATIVE

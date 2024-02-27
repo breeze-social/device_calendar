@@ -60,8 +60,18 @@ class DeviceCalendarPlugin {
       ChannelConstants.methodNameRetrieveCalendars,
       evaluateResponse: (rawData) => UnmodifiableListView(
         json.decode(rawData).map<Calendar>(
-              (decodedCalendar) => Calendar.fromJson(decodedCalendar),
-            ),
+          (decodedCalendar) {
+            final calendar = Calendar.fromJson(decodedCalendar);
+            if (Platform.isAndroid) {
+              return calendar.copyWith(
+                accountIdentifier: calendar.accountName,
+                accountSupportsCalendarCreation: true,
+              );
+            }
+
+            return calendar;
+          },
+        ),
       ),
     );
   }
@@ -269,17 +279,24 @@ class DeviceCalendarPlugin {
   /// The `calendarName` parameter is the name of the new calendar\
   /// The `calendarColor` parameter is the color of the calendar. If null,
   /// a default color (red) will be used\
-  /// The `localAccountName` parameter is the name of the local account:
-  /// - [Android] Required. If `localAccountName` parameter is null or empty, it will default to 'Device Calendar'.
+  /// The `accountName` parameter is the name of the local account:
+  /// - [Android] Required. If `accountName` parameter is null or empty, it will default to 'Device Calendar'.
   /// If the account name already exists in the device, it will add another calendar under the account,
   /// otherwise a new local account and a new calendar will be created.
-  /// - [iOS] Not used. A local account will be picked up automatically, if not found, an error will be thrown.
+  /// - [iOS] Ignored. A local account will be picked up automatically, if not found, an error will be thrown.
+  ///
+  /// The `accountIdentifier` parameter is the identifier of the account (`ACCOUNT_OWNER` on Android).
+  /// - [Android] Ignored.
+  /// - [iOS] Optional, but good to set to avoid creating a calendar under an account that
+  /// doesn't support creating new calendars. This can be checked via [Calendar.accountSupportsCalendarCreation]
+  /// If not set, the method will auto-select an account and create a calendar under it (may fail!).
   ///
   /// Returns a [Result] with the newly created [Calendar.id]
   Future<Result<String>> createCalendar(
     String? calendarName, {
     Color? calendarColor,
-    String? localAccountName,
+    String? accountName,
+    String? accountIdentifier,
   }) async {
     return _invokeChannelMethod(
       ChannelConstants.methodNameCreateCalendar,
@@ -298,9 +315,9 @@ class DeviceCalendarPlugin {
         ChannelConstants.parameterNameCalendarColor:
             '0x${calendarColor?.value.toRadixString(16)}',
         ChannelConstants.parameterNameLocalAccountName:
-            localAccountName?.isEmpty ?? true
-                ? 'Device Calendar'
-                : localAccountName
+            accountName?.isEmpty ?? true ? 'Device Calendar' : accountName,
+        if (Platform.isAndroid)
+          ChannelConstants.parameterNameAccountIdentifier: accountIdentifier,
       },
     );
   }
@@ -373,7 +390,8 @@ class DeviceCalendarPlugin {
         debugPrint(
             "INVOKE_CHANNEL_METHOD_ERROR! Name: ${e.name}, InvalidValue: ${e.invalidValue}, Message: ${e.message}, ${e.toString()}");
       } else if (e is PlatformException) {
-        debugPrint('INVOKE_CHANNEL_METHOD_ERROR: $e\n$s');
+        debugPrint(
+            'INVOKE_CHANNEL_METHOD_ERROR: $e\n$s\nNative StackTrace: ${e.stacktrace}');
       } else {
         _parsePlatformExceptionAndUpdateResult<T>(e as Exception?, result);
       }

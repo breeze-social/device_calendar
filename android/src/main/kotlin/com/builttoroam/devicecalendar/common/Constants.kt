@@ -23,7 +23,6 @@ class Constants {
             CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,         // 5
             CalendarContract.Calendars.CALENDAR_COLOR,                // 6
             CalendarContract.Calendars.IS_PRIMARY                     // 7
-
         )
 
         // API 16 or lower
@@ -52,21 +51,21 @@ class Constants {
         const val EVENT_PROJECTION_STATUS_INDEX: Int = 14
 
         val EVENT_PROJECTION: Array<String> = arrayOf(
-                CalendarContract.Instances.EVENT_ID,
-                CalendarContract.Events.TITLE,
-                CalendarContract.Events.DESCRIPTION,
-                CalendarContract.Instances.BEGIN,
-                CalendarContract.Instances.END,
-                CalendarContract.Instances.DURATION,
-                CalendarContract.Events.RDATE,
-                CalendarContract.Events.RRULE,
-                CalendarContract.Events.ALL_DAY,
-                CalendarContract.Events.EVENT_LOCATION,
-                CalendarContract.Events.CUSTOM_APP_URI,
-                CalendarContract.Events.EVENT_TIMEZONE,
-                CalendarContract.Events.EVENT_END_TIMEZONE,
-                CalendarContract.Events.AVAILABILITY,
-                CalendarContract.Events.STATUS
+            CalendarContract.Instances.EVENT_ID,
+            CalendarContract.Events.TITLE,
+            CalendarContract.Events.DESCRIPTION,
+            CalendarContract.Instances.BEGIN,
+            CalendarContract.Instances.END,
+            CalendarContract.Instances.DURATION,
+            CalendarContract.Events.RDATE,
+            CalendarContract.Events.RRULE,
+            CalendarContract.Events.ALL_DAY,
+            CalendarContract.Events.EVENT_LOCATION,
+            CalendarContract.Events.CUSTOM_APP_URI,
+            CalendarContract.Events.EVENT_TIMEZONE,
+            CalendarContract.Events.EVENT_END_TIMEZONE,
+            CalendarContract.Events.AVAILABILITY,
+            CalendarContract.Events.STATUS
         )
 
         const val EVENT_INSTANCE_DELETION_ID_INDEX: Int = 0

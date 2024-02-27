@@ -115,12 +115,15 @@ class DeviceCalendarPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             REQUEST_PERMISSIONS_METHOD -> {
                 _calendarDelegate.requestPermissions(result)
             }
+
             HAS_PERMISSIONS_METHOD -> {
                 _calendarDelegate.hasPermissions(result)
             }
+
             RETRIEVE_CALENDARS_METHOD -> {
                 _calendarDelegate.retrieveCalendars(result)
             }
+
             RETRIEVE_EVENTS_METHOD -> {
                 val calendarId = call.argument<String>(CALENDAR_ID_ARGUMENT)
                 val startDate = call.argument<Long>(START_DATE_ARGUMENT)
@@ -128,17 +131,20 @@ class DeviceCalendarPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 val eventIds = call.argument<List<String>>(EVENT_IDS_ARGUMENT) ?: listOf()
                 _calendarDelegate.retrieveEvents(calendarId!!, startDate, endDate, eventIds, result)
             }
+
             CREATE_OR_UPDATE_EVENT_METHOD -> {
                 val calendarId = call.argument<String>(CALENDAR_ID_ARGUMENT)
                 val event = parseEventArgs(call, calendarId)
                 _calendarDelegate.createOrUpdateEvent(calendarId!!, event, result)
             }
+
             DELETE_EVENT_METHOD -> {
                 val calendarId = call.argument<String>(CALENDAR_ID_ARGUMENT)
                 val eventId = call.argument<String>(EVENT_ID_ARGUMENT)
 
                 _calendarDelegate.deleteEvent(calendarId!!, eventId!!, result)
             }
+
             DELETE_EVENT_INSTANCE_METHOD -> {
                 val calendarId = call.argument<String>(CALENDAR_ID_ARGUMENT)
                 val eventId = call.argument<String>(EVENT_ID_ARGUMENT)
@@ -155,22 +161,25 @@ class DeviceCalendarPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     followingInstances
                 )
             }
+
             CREATE_CALENDAR_METHOD -> {
                 val calendarName = call.argument<String>(CALENDAR_NAME_ARGUMENT)
                 val calendarColor = call.argument<String>(CALENDAR_COLOR_ARGUMENT)
-                val localAccountName = call.argument<String>(LOCAL_ACCOUNT_NAME_ARGUMENT)
+                val localAccountName = call.argument<String?>(LOCAL_ACCOUNT_NAME_ARGUMENT)
 
                 _calendarDelegate.createCalendar(
                     calendarName!!,
                     calendarColor,
-                    localAccountName!!,
+                    localAccountName,
                     result
                 )
             }
+
             DELETE_CALENDAR_METHOD -> {
                 val calendarId = call.argument<String>(CALENDAR_ID_ARGUMENT)
                 _calendarDelegate.deleteCalendar(calendarId!!, result)
             }
+
             else -> {
                 result.notImplemented()
             }
@@ -286,11 +295,11 @@ class DeviceCalendarPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     private fun parseAvailability(value: String?): Availability? =
-            if (value == null || value == Constants.AVAILABILITY_UNAVAILABLE) {
-                null
-            } else {
-                Availability.valueOf(value)
-            }
+        if (value == null || value == Constants.AVAILABILITY_UNAVAILABLE) {
+            null
+        } else {
+            Availability.valueOf(value)
+        }
 
     private fun parseEventStatus(value: String?): EventStatus? =
         if (value == null || value == Constants.EVENT_STATUS_NONE) {

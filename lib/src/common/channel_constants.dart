@@ -23,4 +23,5 @@ class ChannelConstants {
   static const String parameterNameCalendarName = 'calendarName';
   static const String parameterNameCalendarColor = 'calendarColor';
   static const String parameterNameLocalAccountName = 'localAccountName';
+  static const String parameterNameAccountIdentifier = 'accountIdentifier';
 }
